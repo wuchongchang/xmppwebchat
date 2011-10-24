@@ -22,6 +22,7 @@ package edu.maristit.xmppwebchat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.StringEscapeUtils;
 import org.json.JSONArray;
 
 public class Buddy extends Object {
@@ -50,9 +51,15 @@ public class Buddy extends Object {
 
     @Override
     public String toString() {
+        if(this.name==null) this.name=this.email;
+        if(this.email==null) this.email="";
+        if(this.presence==null) this.presence="";
+        if(this.status==null) this.status="";
+        if(this.group==null) this.group= new ArrayList<String>();
+        //StringEscapeUtils utils = new StringEscapeUtils();
         return "{ 'name' : '" + this.name.replaceAll("'", "\\\\'") + "'," + "'email' : '" + this.email
                 + "'," + " 'presence' : '" + this.presence + "',"
-                + "'status' : '" + this.status + "', 'group' : " + new JSONArray(this.group) + " }";
+                + "'status' : '" + StringEscapeUtils.escapeJavaScript(this.status) + "', 'group' : " + new JSONArray(this.group) + " }";
     }
 
     public String getName() {

@@ -128,7 +128,7 @@
             var counter = 1;
             /************/
             dojo.require("dojox.cometd");
-    var         config = {
+            var config = {
                 contextPath: '${pageContext.request.contextPath}'
             };
             var cometd = dojox.cometd;
@@ -179,12 +179,7 @@
             cometd.addListener('/meta/connect', _metaConnect);
             cometd.handshake();
 
-            //cometd.subscribe("/"+chatRoomName, chatUpdated);
-
-            // Publish to a channel
-            // cometd.publish('/'+chatRoomName, { data: 'bar' });
-
-       
+            
             /*************/
             function logoff(){
                 var userNameJson = {logout:'true'};
@@ -800,7 +795,7 @@
             }
         </style>
     </head>
-    <body onload="getBuddies()" onunload="unLoad()";>
+    <body onload="getBuddies()" onunload="">
           <div style ="font-size:150%;">
             <img id="myStatusImg" width='17px' height='17px' src='images/available.ico'/> <%=userName%>
             <select style="align:bottom;background:url('images/dropdown.ico');background-size:12px 12px;background-repeat:no-repeat;padding-left:20px;position:relative;z-index:9;width:7px;height:15px" id="mode" onchange="changeStatus()" >
@@ -855,11 +850,11 @@
     </div>
     <div id='GROUPS_LIST'>
     </div>
-    <div style ="font-size:90%;position:absolute;top:95%;left:40%;">
+    <div id='body' style ="font-size:80%">
+    </div>
+    <div style ="font-size:90%;position:relative;top:105%;left:40%;">
         © Copyright 20011 Marist College,
         XMPPWebChat 1.0-beta1.
-    </div>
-    <div id='body'>
     </div>
 </body>
 <script>
