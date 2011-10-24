@@ -21,6 +21,8 @@ package edu.maristit.xmppwebchat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -208,7 +210,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                     e.printStackTrace();
                 }
                 sendBuddy(buddies);
-                //System.out.println("BUDDIES Requested:" + buddies);
+                System.out.println("BUDDIES Requested:" + buddies);
                 sendOfflineChat();
 
             } else if (fields.containsKey("logout")) {
@@ -407,6 +409,16 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         }
         // String username = "User " + userName;
         Map<String, String> chatMessage = new HashMap<String, String>();
+       
+        Collections.sort(buddies, new Comparator(){
+ 
+            public int compare(Object o1, Object o2) {
+                Buddy p1 = (Buddy) o1;
+                Buddy p2 = (Buddy) o2;
+               return p1.getPresence().compareToIgnoreCase(p2.getPresence());
+            }
+ 
+        });
         chatMessage.put("buddies", buddies.toString());
         chatMessage.put("allUsers", users.toString());
         sendNotification(chatMessage);
@@ -469,12 +481,12 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
             public void presenceChanged(Presence presence) {
                 try {
                     if (connection.isConnected()) {
-                        System.out.println("Presence changed: "
-                                + presence.getFrom()
-                                + "->"
-                                + presence
-                                + " in:"
-                                + connection.getAccountManager().getAccountAttribute("username"));
+//                        System.out.println("Presence changed: "
+//                                + presence.getFrom()
+//                                + "->"
+//                                + presence
+//                                + " in:"
+//                                + connection.getAccountManager().getAccountAttribute("username"));
                     }
 
                 } catch (Exception e) {
@@ -482,7 +494,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                 }
                 String[] username = presence.getFrom().split("/");
 
-                System.out.println("Buddies in " + chatRoom + ":" + buddies);
+                //System.out.println("Buddies in " + chatRoom + ":" + buddies);
                 for (Buddy buddy : buddies) {
                     if (username[0].equalsIgnoreCase(buddy.getEmail())) {
                         if (presence.isAvailable()) {
