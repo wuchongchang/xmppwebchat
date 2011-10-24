@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2011  Adam Hocek. Contact: ahocek@gmail.com, Ghattamaneni Uday. 
+ * Copyright (C) 2011  Adam Hocek. Contact: ahocek@gmail.com,  Udaya K Ghattamaneni. 
  * Contact: ghattamaneni.uday@gmail.com 
  * 
  * This library is free software; you can redistribute it and/or
