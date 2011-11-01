@@ -294,6 +294,20 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         // Payload notification = new JsonPayload(topic);
         // notification.addField("notification", notificationMessage);
         //streamingServer.publish(topic, notificationMessage);
+        if(!notificationMessage.containsKey("displayName")){
+            for(Buddy buddy: buddies){
+                if(buddy.getEmail().equalsIgnoreCase(notificationMessage.get("user"))){
+                    if(!buddy.getName().equalsIgnoreCase("")){
+                        notificationMessage.put("displayName", buddy.getName());
+                        break;
+                    }else{
+                        notificationMessage.put("displayName", buddy.getEmail());
+                        break;
+                    }
+                }
+                    
+            }
+        }
         serverSession.deliver(getServerSession(), "/" + chatRoom, notificationMessage, null);
     }
 
@@ -354,7 +368,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         Map<String, String> chatMessage = new HashMap<String, String>();
         String username = "" + userName;
         chatMessage.put("user", username);
-        chatMessage.put("displayName", displayName);
+        //chatMessage.put("displayName", displayName);
         chatMessage.put("chat", "" + message);
         sendNotification(chatMessage);
     }
