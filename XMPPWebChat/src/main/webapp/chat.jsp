@@ -26,8 +26,10 @@
         <title>Chat</title>
         <link rel="stylesheet" type="text/css" href="css/jquery.autocomplete.css" />
         <link type="text/css" href="css/redmond/jquery-ui-1.8.14.custom.css" rel="stylesheet" />
-        <script type="text/javascript" src="dojo/dojo.js.uncompressed.js"></script>	
-        <script type="text/javascript" src="js/jquery-1.5.1.min.js"></script>
+ 	<script type="text/javascript" src="jquery/jquery-1.6.2.js"></script>
+        <script type="text/javascript" src="jquery/json2.js"></script>
+        <script type="text/javascript" src="org/cometd.js"></script>
+        <script type="text/javascript" src="jquery/jquery.cometd.js"></script>
         <script type="text/javascript" src="js/jquery-ui-1.8.14.custom.min.js"></script>
         <script type='text/javascript' src='js/jquery.autocomplete.js'></script>
         <script type='text/javascript' src='js/lib/jquery.bgiframe.min.js'></script>
@@ -127,22 +129,23 @@
             %>
             var counter = 1;
             /************/
-            dojo.require("dojox.cometd");
+            //dojo.require("dojox.cometd");
             var config = {
                 contextPath: '${pageContext.request.contextPath}'
             };
-            var cometd = dojox.cometd;
+           // var cometd = dojox.cometd;
+	var cometd = $.cometd;
             var _connected = false;
             function _connectionSucceeded()
             {
                 var d=new Date();
-                dojo.byId('body').innerHTML  = dojo.byId('body').innerHTML+'<br/>Connected At:'+d;
+		$('#body').innerHTML += "<br/>Connected At:"+d;
             }
 
             function _connectionBroken()
             {
                 var d=new Date();
-                dojo.byId('body').innerHTML  = dojo.byId('body').innerHTML+'<br/>Connection Broken At:'+d;
+               $('#body').innerHTML  += "<br/>Connection Broken At:"+d;
                 logoff();
             }
 
@@ -161,7 +164,8 @@
             }
             /**/
             // Disconnect when the page unloads
-            dojo.addOnUnload(function()
+            //dojo.addOnUnload(function()
+	   $(window).unload(function()
             {
                 logoff();
                 cometd.disconnect();
