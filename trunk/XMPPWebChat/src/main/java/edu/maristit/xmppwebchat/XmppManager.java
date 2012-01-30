@@ -18,6 +18,7 @@
  */
 package edu.maristit.xmppwebchat;
 
+import java.io.Serializable;
 import org.cometd.bayeux.server.BayeuxServer;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.SASLAuthentication;
@@ -26,7 +27,7 @@ import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Presence.Type;
 
-public class XmppManager {
+public class XmppManager implements Serializable{
 
     private static final int packetReplyTimeout = 1000; // millis
     private String server;
@@ -93,12 +94,12 @@ public class XmppManager {
         }
         this.userName = username;
         if (server.equalsIgnoreCase("chat.facebook.com")) {
-            chatListener = new ChatListener(b, username + "@chat.facebook.com");
+            setChatListener(new ChatListener(b, username + "@chat.facebook.com"));
         } else {
-            chatListener = new ChatListener(b, username);
+            setChatListener(new ChatListener(b, username));
         }
-        chatListener.init(connection);
-        connection.getChatManager().addChatListener(chatListener);
+        getChatListener().init(connection);
+        connection.getChatManager().addChatListener(getChatListener());
 
     }
 
@@ -116,10 +117,10 @@ public class XmppManager {
         try {
 
             if (connection != null) {
-                connection.getChatManager().removeChatListener(chatListener);
+                connection.getChatManager().removeChatListener(getChatListener());
             }
-            if (chatListener != null) {
-                chatListener.destroy();
+            if (getChatListener() != null) {
+                getChatListener().destroy();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -136,5 +137,19 @@ public class XmppManager {
 
     public String getUserName() {
         return this.userName;
+    }
+
+    /**
+     * @return the chatListener
+     */
+    public ChatListener getChatListener() {
+        return chatListener;
+    }
+
+    /**
+     * @param chatListener the chatListener to set
+     */
+    public void setChatListener(ChatListener chatListener) {
+        this.chatListener = chatListener;
     }
 }

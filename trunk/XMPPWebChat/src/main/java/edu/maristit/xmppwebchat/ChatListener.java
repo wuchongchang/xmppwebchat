@@ -18,11 +18,13 @@
  */
 package edu.maristit.xmppwebchat;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -43,6 +45,7 @@ import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.RosterGroup;
 import org.jivesoftware.smack.RosterListener;
+import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.filter.ToContainsFilter;
@@ -60,10 +63,11 @@ import org.jivesoftware.smackx.ReportedData.Row;
 import org.jivesoftware.smackx.muc.InvitationListener;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.packet.DelayInformation;
+import org.jivesoftware.smackx.packet.VCard;
 import org.jivesoftware.smackx.search.UserSearchManager;
 import org.json.JSONArray;
 
-class ChatListener extends AbstractService implements ClientSessionChannel.MessageListener,
+public class ChatListener extends AbstractService implements ClientSessionChannel.MessageListener,
         ChatManagerListener, MessageListener {
 
     private String chatRoom = "ChatRoom";
@@ -75,6 +79,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
     private List<Map<String, String>> offlines = new ArrayList<Map<String, String>>();
     private String conferenceServer = "";
     private ServerSession serverSession;
+    public List<Map<String, String>> messageArchives = new ArrayList<Map<String, String>>();
 
     public void processMessage(Chat chat, Message message) {
         String from = message.getFrom();
@@ -95,6 +100,13 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void sendHistory() {
+
+        System.out.println("Requesting history:" + (new JSONArray(messageArchives)).toString());
+        serverSession.deliver(getServerSession(), "/" + chatRoom, (new JSONArray(messageArchives)).toString(), null);
+
     }
 
     public void destroy() {
@@ -183,7 +195,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
 
             if (fields.containsKey("")) {
             } else if (fields.containsKey("chat")) {
-                // System.out.println("Sending CHat");
+                System.out.println("Sending CHat" + fields);
                 sendChatMessage(fields);
             } else if (fields.containsKey("status")) {
                 Mode mode = Mode.available;
@@ -211,7 +223,9 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                 }
                 sendBuddy(buddies);
                 System.out.println("BUDDIES Requested:" + buddies);
+                sendHistory();
                 sendOfflineChat();
+                
 
             } else if (fields.containsKey("logout")) {
 
@@ -265,6 +279,35 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
 //						+ fields.get("confUsers") + "' to Conference:");
                 String users[] = fields.get("confUsers").split("\\|");
                 inviteConference(fields.get("inviteConf"), Arrays.asList(users));
+            } else if (fields.containsKey("closeChat")) {
+                System.out.println("Called Close Chat :" + fields.get("closeChat"));
+
+                for (Map map : messageArchives) {
+                    if (map.get("name").toString().equalsIgnoreCase(fields.get("closeChat"))) {
+                        System.out.println("Closing Chat :" + fields.get("closeChat"));
+                        map.put("open", "false");
+
+                    }
+                }
+            } else if (fields.containsKey("openChat")) {
+                System.out.println("Called Open Chat :" + fields.get("openChat"));
+
+                for (Map map : messageArchives) {
+                    if (map.get("name").toString().equalsIgnoreCase(fields.get("openChat"))) {
+                        System.out.println("Opened Chat :" + fields.get("openChat"));
+                        map.put("open", "true");
+                    }
+                }
+            } else if (fields.containsKey("moveChat")) {
+                System.out.println("Called Move Chat :" + fields.get("moveChat"));
+
+                for (Map map : messageArchives) {
+                    if (map.get("name").toString().equalsIgnoreCase(fields.get("moveChat"))) {
+//                        System.out.println("Moving Chat to:" + fields.get("X").toString()+","+fields.get("Y").toString());
+//                        map.put("X", fields.get("X").toString());
+//                        map.put("Y", fields.get("Y").toString());
+                    }
+                }
             }
         }
     }
@@ -294,20 +337,90 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         // Payload notification = new JsonPayload(topic);
         // notification.addField("notification", notificationMessage);
         //streamingServer.publish(topic, notificationMessage);
-        if(!notificationMessage.containsKey("displayName")){
-            for(Buddy buddy: buddies){
-                if(buddy.getEmail().equalsIgnoreCase(notificationMessage.get("user"))){
-                    if(!buddy.getName().equalsIgnoreCase("")){
-                        notificationMessage.put("displayName", buddy.getName());
-                        break;
-                    }else{
-                        notificationMessage.put("displayName", buddy.getEmail());
-                        break;
+        Map tempMap = new HashMap();
+        if (notificationMessage.containsKey("user")) {
+            if (!notificationMessage.containsKey("displayName")) {
+                for (Buddy buddy : buddies) {
+                    if (buddy.getEmail().equalsIgnoreCase(notificationMessage.get("user"))) {
+                        if (!buddy.getName().equalsIgnoreCase("")) {
+                            notificationMessage.put("displayName", buddy.getName());
+                            break;
+                        } else {
+                            notificationMessage.put("displayName", buddy.getEmail());
+                            break;
+                        }
                     }
                 }
-                    
+            }
+
+            String usr = notificationMessage.get("user");
+            if (usr.equalsIgnoreCase(chatRoom)) {
+                if (notificationMessage.containsKey("touser")) {
+                    usr = notificationMessage.get("touser");
+                }
+                //System.out.println(":" + notificationMessage);
+                if (notificationMessage.get("displayName") == null) {
+                    notificationMessage.put("displayName", chatRoom);
+                }
+            }
+            Date d = new Date();
+            SimpleDateFormat sd = new SimpleDateFormat("M/d/yyyy H:m:s");
+            //String timeStamp = "("+d.month+"/"+day+"/"+year+" "+hours+":"+minutes+":"+seconds+")
+
+            boolean flag = false;
+            for (Map map : messageArchives) {
+                if (map.get("name").toString().equalsIgnoreCase(usr)) {
+                    if (notificationMessage.get("chat") != null && !notificationMessage.get("chat").equalsIgnoreCase("null")) {
+                        map.put("chat", map.get("chat")
+                                + "<br/><b>(" + sd.format(d) + ") " + notificationMessage.get("displayName") + " :</b> "
+                                + notificationMessage.get("chat"));
+                        //map.get(usr, tempMap);
+                        map.put("open", "true");
+                    }
+                    flag = true;
+                }
+            }
+            if (!flag) {
+                if (notificationMessage.get("chat") != null && !notificationMessage.get("chat").equalsIgnoreCase("null")) {
+                    tempMap.put("name", usr);
+                    tempMap.put("displayName", notificationMessage.get("displayName"));
+                    tempMap.put("chat", "<br/><b>(" + sd.format(d) + ") " + notificationMessage.get("displayName") + " :</b> "
+                            + notificationMessage.get("chat"));
+                    tempMap.put("type", "user");
+                    tempMap.put("open", "true");
+                    messageArchives.add(tempMap);
+                }
+            }
+
+
+        } else if (notificationMessage.containsKey("roomName")) {
+            Date d = new Date();
+            SimpleDateFormat sd = new SimpleDateFormat("M/d/yyyy H:m:s");
+            String room = notificationMessage.get("roomName");
+            boolean flag = false;
+            for (Map map : messageArchives) {
+                if (map.get("name").toString().equalsIgnoreCase(room)) {
+                    String message = map.get("confChat") + "<br/><b>(" + sd.format(d) + ") "
+                            + notificationMessage.get("fromUser") + " : </b>"
+                            + notificationMessage.get("confChat");
+                    map.put("confChat", message);
+                    map.put("open", "true");
+                    flag = true;
+                }
+            }
+            if (!flag) {
+                tempMap.put("type", "conference");
+                tempMap.put("fromUser", "");
+                tempMap.put("name", room);
+                String message = "<b>(" + sd.format(d) + ") "+notificationMessage.get("fromUser") + " :</b> "
+                        + notificationMessage.get("confChat");
+                tempMap.put("confChat", message);
+                tempMap.put("server", notificationMessage.get("server"));
+                tempMap.put("open", "true");
+                messageArchives.add(tempMap);
             }
         }
+        System.out.println("Send to client:" + chatRoom + ":" + notificationMessage);
         serverSession.deliver(getServerSession(), "/" + chatRoom, notificationMessage, null);
     }
 
@@ -330,6 +443,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                     + chatRoom);
             sendNotification(chatMessage);
         }
+        offlines.clear();
     }
 
     private void sendChatMessage(Map<String, String> fields) {
@@ -338,6 +452,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
 
             chatMessage.put("user", chatRoom);
             chatMessage.put("chat", "" + fields.get("chat"));
+            chatMessage.put("touser", "" + fields.get("touser"));
             try {
                 if (chat == null) {
                     System.out.println("Chat not started");
@@ -354,13 +469,16 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                     // System.out.println("Participant"+chat.getParticipant());
                 }
                 chat.sendMessage(fields.get("chat"));
+                System.out.println("Sent to Chat server:" + fields);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            System.out.println("Called sent to Client:" + chatMessage);
             sendNotification(chatMessage);
         } else {
             // System.err.println("Incoming payload did not contain chat message, full message: "
             // + fields.toString());
+            System.out.println("Fields has no Chat:" + fields.containsKey("chat"));
         }
     }
 
@@ -385,53 +503,53 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
 
     private void sendBuddy(List<Buddy> buddies) {
         List<Buddy> users = new ArrayList<Buddy>();
-        try {
-            String[] domain = chatRoom.split("@");
-            UserSearchManager search = new UserSearchManager(connection);
-            Form searchForm = search.getSearchForm("search." + domain[1]);
-            Form answerForm = searchForm.createAnswerForm();
-
-            answerForm.setAnswer("Username", true);
-            answerForm.setAnswer("Name", true);
-            answerForm.setAnswer("search", "*");
-            ReportedData data = search.getSearchResults(answerForm, "search." + domain[1]);
-            //System.out.println("Data:"+data);
-            for (Iterator<Row> i = data.getRows(); i.hasNext();) {
-                Row r = i.next();
-                // System.out.print("Row:"+r.toString());
-                Buddy b = new Buddy("", "", "");
-                for (Iterator<Column> j = data.getColumns(); j.hasNext();) {
-                    String col = ((Column) j.next()).getVariable();
-                    System.out.print(col + ":");
-                    for (Iterator it1 = r.getValues(col); it1.hasNext();) {
-                        String val = it1.next().toString();
-                        System.out.println(val);
-                        if (col.equalsIgnoreCase("jid")) {
-                            b.setEmail(val);
-                        }
-                        if (col.equalsIgnoreCase("Name")) {
-                            b.setName(val);
-                        }
-                        //map.put(col,val);
-                    }
-                }
-                users.add(b);
-            }
-            System.out.println("users Requested:" + users);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+//        try {
+//            String[] domain = chatRoom.split("@");
+//            UserSearchManager search = new UserSearchManager(connection);
+//            Form searchForm = search.getSearchForm("search." + domain[1]);
+//            Form answerForm = searchForm.createAnswerForm();
+//
+//            answerForm.setAnswer("Username", true);
+//            answerForm.setAnswer("Name", true);
+//            answerForm.setAnswer("search", "*");
+//            ReportedData data = search.getSearchResults(answerForm, "search." + domain[1]);
+//            //System.out.println("Data:"+data);
+//            for (Iterator<Row> i = data.getRows(); i.hasNext();) {
+//                Row r = i.next();
+//                // System.out.print("Row:"+r.toString());
+//                Buddy b = new Buddy("", "", "");
+//                for (Iterator<Column> j = data.getColumns(); j.hasNext();) {
+//                    String col = ((Column) j.next()).getVariable();
+//                    System.out.print(col + ":");
+//                    for (Iterator it1 = r.getValues(col); it1.hasNext();) {
+//                        String val = it1.next().toString();
+//                        System.out.println(val);
+//                        if (col.equalsIgnoreCase("jid")) {
+//                            b.setEmail(val);
+//                        }
+//                        if (col.equalsIgnoreCase("Name")) {
+//                            b.setName(val);
+//                        }
+//                        //map.put(col,val);
+//                    }
+//                }
+//                users.add(b);
+//            }
+//            System.out.println("users Requested:" + users);
+//        } catch (Exception e) {
+//            System.out.println("Search Service error:" + e.getMessage());
+//            //e.printStackTrace();
+//        }
         // String username = "User " + userName;
         Map<String, String> chatMessage = new HashMap<String, String>();
-       
-        Collections.sort(buddies, new Comparator(){
- 
+
+        Collections.sort(buddies, new Comparator() {
+
             public int compare(Object o1, Object o2) {
                 Buddy p1 = (Buddy) o1;
                 Buddy p2 = (Buddy) o2;
-               return p1.getPresence().compareToIgnoreCase(p2.getPresence());
+                return p1.getPresence().compareToIgnoreCase(p2.getPresence());
             }
- 
         });
         chatMessage.put("buddies", buddies.toString());
         chatMessage.put("allUsers", users.toString());
@@ -454,32 +572,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
     }
 
     public void printRoster() throws Exception {
-        this.roster = connection.getRoster();
-        Collection<RosterEntry> entries = roster.getEntries();
-        for (RosterEntry entry : entries) {
-            System.out.println(String.format("Buddy:%1$s - Status:%2$s", entry.getUser(), entry.getStatus()));
-            System.out.println("Status:" + roster.getPresence(entry.getUser()));
-            List<String> groups = new ArrayList<String>();
-            if (entry.getGroups() != null && entry.getGroups().size() > 0) {
-                for (RosterGroup rg : entry.getGroups()) {
-                    groups.add(rg.getName());
-                }
-            }
-            if (roster.getPresence(entry.getUser()).isAvailable()) {
-                if (roster.getPresence(entry.getUser()).getMode() == null) {
-                    buddies.add(new Buddy(entry.getName(), entry.getUser(),
-                            "available", groups));
-                } else {
-                    buddies.add(new Buddy(entry.getName(), entry.getUser(),
-                            roster.getPresence(entry.getUser()).getMode().toString(), groups));
-                }
-            } else {
-                buddies.add(new Buddy(entry.getName(), entry.getUser(),
-                        "unavailable", groups));
-            }
-
-        }
-
+        roster = connection.getRoster();
         roster.setSubscriptionMode(Roster.SubscriptionMode.manual);
         roster.addRosterListener(new RosterListener() {
 
@@ -537,7 +630,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
             @Override
             public void processPacket(Packet packet) {
                 // Do something with the incoming packet here.
-                // System.out.println("Packet:"+packet.getClass());
+                 //System.out.println("Packet:"+packet.getClass());
                 if (packet.getClass().toString().equalsIgnoreCase(
                         "class org.jivesoftware.smack.packet.Presence")) {
 
@@ -580,7 +673,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                     Message m = (Message) packet;
 
                     if (m.getBody() != null) {
-                        System.out.println("Body is " + m.getBody());
+                        //System.out.println("Body is " + m.getBody());
                         DelayInformation inf = null;
                         try {
                             inf = (DelayInformation) packet.getExtension("x",
@@ -611,7 +704,41 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         };
         // Register the listener.
         connection.addPacketListener(myListener, new ToContainsFilter(chatRoom));
-
+        
+        String[] domain = chatRoom.split("@");
+        Collection<RosterEntry> entries = roster.getEntries();
+        for (RosterEntry entry : entries) {
+            String entryName = entry.getName();
+            VCard vCard = new VCard();
+            try {
+                if (!domain[1].equalsIgnoreCase("gmail.com") && !domain[1].equalsIgnoreCase("chat.facebook.com")) {
+                    vCard.load(connection, entry.getUser()); // load someone's VCard
+                    entryName = vCard.getFirstName();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            System.out.println(String.format("Buddy:%1$s,Name:%2$s - Status:%3$s", entry.getUser(), entryName, entry.getStatus()));
+            System.out.println("Status:" + roster.getPresence(entry.getUser()));
+            List<String> groups = new ArrayList<String>();
+            if (entry.getGroups() != null && entry.getGroups().size() > 0) {
+                for (RosterGroup rg : entry.getGroups()) {
+                    groups.add(rg.getName());
+                }
+            }
+            if (roster.getPresence(entry.getUser()).isAvailable()) {
+                if (roster.getPresence(entry.getUser()).getMode() == null) {
+                    buddies.add(new Buddy(entryName, entry.getUser(),
+                            "available", groups));
+                } else {
+                    buddies.add(new Buddy(entryName, entry.getUser(),
+                            roster.getPresence(entry.getUser()).getMode().toString(), groups));
+                }
+            } else {
+                buddies.add(new Buddy(entryName, entry.getUser(),
+                        "unavailable", groups));
+            }
+        }
     }
 
     public void addUser(String userName, String email, String[] groups) {
@@ -660,7 +787,6 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         // Create a MultiUserChat using a Connection for a room
         MultiUserChat muc = new MultiUserChat(connection, roomName + "@"
                 + server);
-
         PacketListener myListener = new PacketListener() {
 
             @Override
@@ -671,7 +797,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                     Message m = (Message) packet;
 
                     if (m.getBody() != null) {
-                        System.out.println("Body is " + m.getBody());
+                       // System.out.println("Body is " + m.getBody());
                         DelayInformation inf = null;
                         try {
                             inf = (DelayInformation) packet.getExtension(
@@ -681,8 +807,10 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
                             String[] username = m.getFrom().split("/");
 
                             String t[] = username[0].split("@");
-                            System.out.println("Room:" + t[0] + ",msg:" + m.getBody() + ",User:" + username[1]);
-                            sendToConfPage(t[0], m.getBody(), username[1], t[1]);
+                            if (t.length >= 2) {
+                                System.out.println("Room:" + t[0] + ",msg:" + m.getBody() + ",User:" + username[1]);
+                                sendToConfPage(t[0], m.getBody(), username[1], t[1]);
+                            }
 
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -723,6 +851,7 @@ class ChatListener extends AbstractService implements ClientSessionChannel.Messa
         muc.addParticipantListener(peopleListener);
         try {
             // Create the room
+            //System.out.println(muc);
             muc.create(chatRoom);
             // Send an empty room configuration form which indicates that we
             // want

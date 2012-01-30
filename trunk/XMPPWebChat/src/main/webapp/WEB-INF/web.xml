@@ -11,6 +11,9 @@
         <param-name>org.eclipse.jetty.server.context.ManagedAttributes</param-name>
         <param-value>org.cometd.bayeux</param-value>
     </context-param>
+    <session-config>
+        <session-timeout>2440</session-timeout>
+    </session-config>
 
     <!-- Portability Filter, needed only to run on non Jetty or non Servlet-3.0 containers -->
 
