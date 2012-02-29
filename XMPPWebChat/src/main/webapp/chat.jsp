@@ -202,7 +202,7 @@
     </div>
     <div style ="font-size:90%;position:relative;top:105%;left:40%;">
         © Copyright 2012 Marist College,
-        XMPPWebChat 1.1
+        XMPPWebChat 1.2
     </div>
 </body>
 <script>
